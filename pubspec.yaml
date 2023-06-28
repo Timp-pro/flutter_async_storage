@@ -30,6 +30,9 @@ dependencies:
   path_provider: ^2.0.0
   platform: ^3.0.0
   sqflite: ^2.0.0
+  #https://pub.dev/packages/package_info_plus
+  package_info_plus: ^3.1.2
+
 
 dev_dependencies:
   flutter_test:

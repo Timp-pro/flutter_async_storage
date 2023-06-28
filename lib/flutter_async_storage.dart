@@ -18,6 +18,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:disposables/disposables.dart';
 import 'package:meta/meta.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:platform/platform.dart';
 import 'package:sqflite/sqflite.dart';
@@ -64,7 +65,7 @@ const _androidDataColumnName = 'value';
 /// Android implementation of [AsyncStorageReader].
 ///
 /// On Android, React Native AsyncStorage is backed by a SQLite db.
-class AsyncStorageAndroid implements AsyncStorageReader, Disposable  {
+class AsyncStorageAndroid implements AsyncStorageReader, Disposable {
   /// Whether [_db] is ready for use.
   bool _initialized = false;
 
@@ -144,19 +145,19 @@ class AsyncStorageIOS implements AsyncStorageReader {
   }
 
   @override
-  Future<String?> data (String dataKey) async {
-      // On iOS, data is either stored in the manifest file, or if too
-      // large is sharded into another file in the same directory. Following
-      // the same logic as AsyncStorage, we first check the manifest, then the
-      // filesystem if the manifest does not contain any data.
-      return (await _dataFromManifest(dataKey)) ??
-          (await _dataFromFilesystem(dataKey));
+  Future<String?> data(String dataKey) async {
+    // On iOS, data is either stored in the manifest file, or if too
+    // large is sharded into another file in the same directory. Following
+    // the same logic as AsyncStorage, we first check the manifest, then the
+    // filesystem if the manifest does not contain any data.
+    return (await _dataFromManifest(dataKey)) ??
+        (await _dataFromFilesystem(dataKey));
   }
 
   @override
   Future<void> clear() async {
-      final storageDirectory = await _asyncStorageDirectory();
-      await storageDirectory.delete(recursive: true);
+    final storageDirectory = await _asyncStorageDirectory();
+    await storageDirectory.delete(recursive: true);
   }
 
   /// Directory that all AsyncStorage files are contained in on iOS.
@@ -165,7 +166,11 @@ class AsyncStorageIOS implements AsyncStorageReader {
     // this case we need to access it to port data from the legacy React Native
     // app.
     final docDir = await getApplicationSupportDirectory();
-    return Directory('${docDir.path}/$_iosDataDirectory');
+    final applicationPackage = await PackageInfo.fromPlatform().then((value) {
+      return value.packageName;
+    });
+
+    return Directory('${docDir.path}/$applicationPackage/$_iosDataDirectory');
   }
 
   Future<File> _asyncStorageFile(String filename) async {
@@ -175,19 +180,18 @@ class AsyncStorageIOS implements AsyncStorageReader {
 
   /// Returns data stored in the manifest file, if available.
   Future<String?> _dataFromManifest(String dataKey) async {
-      final manifestData = await (await _manifest).readAsString();
-      final jsonData = json.decode(manifestData);
-      return jsonData[dataKey];
+    final manifestData = await (await _manifest).readAsString();
+    final jsonData = json.decode(manifestData);
+    return jsonData[dataKey];
   }
 
   /// Returns data sharded into the filesystem, if available.
   Future<String?> _dataFromFilesystem(String dataKey) async {
-      // md5 is cryptographically insecure, but is used by React Native to
-      // shard files.
-      final encodedFilename =
-          md5.convert(utf8.encode(dataKey)).toString();
-      final encodedFile = await _asyncStorageFile(encodedFilename);
-      return encodedFile.readAsString();
+    // md5 is cryptographically insecure, but is used by React Native to
+    // shard files.
+    final encodedFilename = md5.convert(utf8.encode(dataKey)).toString();
+    final encodedFile = await _asyncStorageFile(encodedFilename);
+    return encodedFile.readAsString();
   }
 
   Future<File> get _manifest async => _asyncStorageFile(_iosManifestFilename);
